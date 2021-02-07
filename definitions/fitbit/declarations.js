@@ -1,0 +1,1 @@
+["sleep_score"].forEach(n => declare({name: n, schema: "fitbit_data"}) )

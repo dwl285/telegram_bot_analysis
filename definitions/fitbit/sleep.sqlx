@@ -1,0 +1,20 @@
+config {
+  type: "view"
+}
+
+js {
+  const abs_error = "(1.96*stddev(overall_score)/(pow(sum(1), 0.5)))";
+}
+
+select
+  if(date(timestamp) between date("2021-01-02") and date("2021-02-06"), "DRY", "WET") as category,
+  round(avg(overall_score),1) as average_score,
+  round(avg(overall_score) - ${abs_error},1) as lower_bound,
+  round(avg(overall_score) + ${abs_error}, 1) as upper_bound,
+  sum(1) as frequency
+from
+  ${ref("sleep_score")}
+where
+  timestamp >= timestamp_sub(current_timestamp(), interval 180 day)
+group by
+  1
