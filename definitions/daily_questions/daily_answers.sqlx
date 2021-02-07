@@ -1,0 +1,34 @@
+config {
+  type: "view"
+}
+
+with aggregate_to_daily as (
+select
+  date(timestamp_sub(cast(date as timestamp), interval 1 day)) as date_answered,
+  user,
+  case
+    when question like "Did you play chess%" then "CHESS"
+    when question like "Did you read%" then "READING"
+    when question like "Did you drink%" then "DRINKING"
+    when question like "Did you exercise%" then "EXERCISE"
+    when question like "Did you play the piano%" then "PIANO"
+    else "ERROR"
+  end as question_type,
+  array_agg(response order by cast(date as timestamp) desc)[safe_offset(0)] as last_response
+from
+  ${ref("daily_questions")}
+group by
+  1,2,3
+)
+
+select
+  date_answered,
+  user,
+  question_type,
+  case
+    when last_response = "0" then "NO"
+    when last_response = "1" then "YES"
+    else "ERROR"
+  end as answer
+from
+  aggregate_to_daily

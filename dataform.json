@@ -1,6 +1,6 @@
 {
     "warehouse": "bigquery",
-    "defaultSchema": "dataform",
-    "assertionSchema": "dataform_assertions",
+    "defaultSchema": "telegram_analysis",
+    "assertionSchema": "telegram_analysis",
     "defaultDatabase": "dan-playground-285"
 }

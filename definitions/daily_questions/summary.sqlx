@@ -1,0 +1,44 @@
+config {
+  type: "view"
+}
+
+js {
+  const types = [{
+      question_type: "CHESS",
+      positive_response: "YES"
+    },
+    {
+      question_type: "READING",
+      positive_response: "YES"
+    },
+    {
+      question_type: "DRINKING",
+      positive_response: "NO"
+    },
+    {
+      question_type: "EXERCISE",
+      positive_response: "YES"
+    },
+    {
+      question_type: "PIANO",
+      positive_response: "YES"
+    }
+  ];
+
+  const positive_response = `case
+  ${types.map(t => `when question_type = "${t.question_type}" then "${t.positive_response}"`).join("\n ")} end`;
+
+}
+
+select
+  question_type,
+  sum(1) as answers,
+  sum(if(answer = (${positive_response}), 1, 0)) as good_days,
+  round((date_diff(date("2022-01-01"), date("2021-01-01"), DAY)/date_diff(current_date(), date("2021-01-01"), DAY))*sum(if(answer = (${positive_response}), 1, 0)), 0) as projected_good_days,
+  sum(1) / date_diff(current_date(), date("2021-01-01"), DAY) as percent_answered
+from
+  ${ref("daily_answers")}
+where
+  user = "Dan"
+group by
+  1
