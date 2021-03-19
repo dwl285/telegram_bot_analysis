@@ -1,0 +1,100 @@
+config {
+  type: "view"
+}
+
+js {
+  const types = [{
+      question_type: "CHESS",
+      positive_response: "YES"
+    },
+    {
+      question_type: "READING",
+      positive_response: "YES"
+    },
+    {
+      question_type: "DRINKING",
+      positive_response: "NO"
+    },
+    {
+      question_type: "EXERCISE",
+      positive_response: "YES"
+    },
+    {
+      question_type: "PIANO",
+      positive_response: "YES"
+    }
+  ];
+
+  const positive_response = `case
+  ${types.map(t => `when question_type = "${t.question_type}" then "${t.positive_response}"`).join("\n ")} end`;
+
+}
+
+with answers as (
+select
+  date_answered,
+  user,
+  question_type,
+  answer,
+  if(answer = (${positive_response}), 1, 0) as status
+from
+  ${ref("daily_answers")}
+),
+lagged as (
+select
+  *,
+  lag(status) over (partition by user, question_type order by date_answered asc) as last_status
+from
+  answers
+),
+streak_starts as (
+select
+  *
+from
+  lagged
+where
+  last_status != status
+),
+streak_ends as (
+select
+  date_answered as streak_start_date,
+  user,
+  question_type,
+  status as streak_type,
+  lead(date_answered) over (partition by user, question_type order by date_answered asc) as streak_end_date
+from
+  streak_starts
+),
+max_dates as (
+select
+  user,
+  question_type,
+  max(date_answered) as max_date_answered
+from
+  answers
+group by
+  1,2
+),
+streak_lengths as (
+select
+  streak_start_date,
+  coalesce(streak_end_date, max_date_answered) as streak_end_date,
+  date_diff(coalesce(streak_end_date, max_date_answered), streak_start_date, DAY) as streak_length,
+  user,
+  question_type,
+  streak_type
+from
+  streak_ends
+  left join max_dates using (user, question_type)
+)
+
+select 
+  a.*,
+  coalesce(date_diff(date_answered, streak_start_date, DAY),0) + 1 as streak_length,
+  coalesce(sl.streak_type, status) as streak_type
+from
+  answers a
+  left join max_dates m using (user, question_type)
+  left join streak_lengths sl
+    on a.user = sl.user and a.question_type = sl.question_type and a.date_answered >= sl.streak_start_date and 
+    (a.date_answered < sl.streak_end_date or (a.date_answered = sl.streak_end_date and a.date_answered = m.max_date_answered))
